@@ -20,8 +20,9 @@ public class Constants {
 	public static final int HEIGHTMAP_ITERATIONS = 10;
 	
 	public static final int MIN_SLOPE = 40; 
+	public static final int MAX_SLOPE = 120;
 	public static final int MAX_SEDIMENT = 40;
-	public static final float SEDIMENT_BASE = 0.15f, MAX_SLOPE = 0.9f;
+	public static final float SEDIMENT_BASE = 0.15f;
 	
 	public static final int DIRT_DROP_COUNT = 60;
 	public static final int MAX_DIRT_SLOPE = 40;
@@ -30,6 +31,9 @@ public class Constants {
 	
 	public static final int EROSION_ITERATIONS = 25;
 	public static final int ROCK_WEIGHT = 3800;
+	
+	public static final double CLIFF_RATIO = 1.4;
+	public static final boolean LAND_SLIDE = true;
 	
 	public static final int GRASS_ITERATIONS = 50;
 	public static final int BIOME_RATE = 60;

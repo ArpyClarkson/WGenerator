@@ -11,6 +11,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -35,7 +36,6 @@ import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileView;
 
 import com.wurmonline.mesh.FoliageAge;
 import com.wurmonline.mesh.GrassData.GrowthTreeStage;
@@ -71,18 +71,22 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 	private JLabel lblMapSize, lblSeed, lblRes, lblIterations, lblMinEdge, lblBorderWeight, lblMaxHeight;
 	private JLabel lblErodeIterations, lblErodeMinSlope, lblErodeMaxSediment;
 	private JLabel lblBiomeSeed, lblDirtAmnt, lblDirtSlope, lblDirtDiagSlope, lblMaxDirtHeight, lblWaterHeight;
+	private JLabel lblCliffRatio;
 	private JLabel lblBiomeSeedCount, lblBiomeSize, lblBiomeMaxSlope, lblBiomeRate, lblBiomeMinHeight, lblBiomeMaxHeight;
 	private JLabel lblRock, lblIron, lblGold, lblSilver, lblZinc, lblCopper, lblLead, lblTin, lblAddy, lblGlimmer, lblMarble, lblSlate;
 	
 	private JTextField txtSeed, txtRes, txtIterations, txtMinEdge, txtBorderWeight, txtMaxHeight;
-	private JTextField txtErodeIterations, txtErodeMinSlope, txtErodeMaxSediment;
+	private JTextField txtErodeIterations, txtErodeMinSlope, txtErodeMaxSlope, txtErodeMaxSediment;
 	private JTextField txtBiomeSeed, txtDirtAmnt, txtDirtSlope, txtDirtDiagSlope, txtMaxDirtHeight, txtWaterHeight;
+	private JTextField txtCliffRatio;
 	private JTextField txtBiomeSeedCount, txtBiomeSize, txtBiomeMaxSlope, txtBiomeRateN, txtBiomeRateS, txtBiomeRateE, txtBiomeRateW, 
 			txtBiomeMinHeight, txtBiomeMaxHeight;
 	private JTextField txtRock, txtIron, txtGold, txtSilver, txtZinc, txtCopper, txtLead, txtTin, txtAddy, txtGlimmer, txtMarble, txtSlate;
 	private JTextField txtName;
 	
 	private JCheckBox chkLand;
+	private JCheckBox chkLandSlide;
+	private JButton btnLoadHeightMap, btnSaveHeightMap;
 	
 	@SuppressWarnings("rawtypes")
 	private JComboBox cmbMapSize, cmbBiomeType;
@@ -100,7 +104,7 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 	public WGenerator(String title, int width, int height) {
 		super(title);
 		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
-		this.setLayout(new BorderLayout());
+		getContentPane().setLayout(new BorderLayout());
 		
 		raisedbevel = BorderFactory.createRaisedBevelBorder();
 		loweredbevel = BorderFactory.createLoweredBevelBorder();
@@ -214,6 +218,10 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		btnResetHeightSeed.addActionListener(this);
 		btnGenHeightMap = new JButton("Gen Heightmap");
 		btnGenHeightMap.addActionListener(this);
+		btnLoadHeightMap = new JButton("Import");
+		btnLoadHeightMap.addActionListener(this);
+		btnSaveHeightMap = new JButton("Export");
+		btnSaveHeightMap.addActionListener(this);
 		
 		pnlHeightMapOptions.add(lblMapSize);
 		pnlHeightMapOptions.add(cmbMapSize);
@@ -232,6 +240,8 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		pnlHeightMapOptionsMiddleBottom.add(txtMaxHeight);
 		pnlHeightMapOptions3.add(chkLand);
 		pnlHeightMapOptions3.add(btnGenHeightMap);
+		pnlHeightMapOptions3.add(btnLoadHeightMap);
+		pnlHeightMapOptions3.add(btnSaveHeightMap);
 		
 		pnlHeightMapOptionsMiddle.add(pnlHeightMapOptionsMiddleTop);
 		pnlHeightMapOptionsMiddle.add(pnlHeightMapOptionsMiddleBottom);
@@ -242,8 +252,9 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		
 		lblErodeIterations = new JLabel("Erosion Iterations:");
 		txtErodeIterations = new JTextField("" + Constants.EROSION_ITERATIONS, 3);
-		lblErodeMinSlope = new JLabel("Erosion Min Slope:");
+		lblErodeMinSlope = new JLabel("Erosion Min/Max Slope:");
 		txtErodeMinSlope = new JTextField("" + Constants.MIN_SLOPE, 3);
+		txtErodeMaxSlope = new JTextField("" + Constants.MAX_SLOPE, 3);
 		lblErodeMaxSediment = new JLabel("Max Sediment Per Iteration:");
 		txtErodeMaxSediment = new JTextField("" + Constants.MAX_SEDIMENT, 3);
 		
@@ -254,6 +265,7 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		pnlErodeOptions.add(txtErodeIterations);
 		pnlErodeOptions.add(lblErodeMinSlope);
 		pnlErodeOptions.add(txtErodeMinSlope);
+		pnlErodeOptions.add(txtErodeMaxSlope);
 		pnlErodeOptions2.add(lblErodeMaxSediment);
 		pnlErodeOptions2.add(txtErodeMaxSediment);
 		
@@ -275,6 +287,10 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		txtMaxDirtHeight = new JTextField("" + Constants.ROCK_WEIGHT, 4);
 		lblWaterHeight = new JLabel("Water Height:");
 		txtWaterHeight = new JTextField("" + Constants.WATER_HEIGHT, 4);
+		lblCliffRatio = new JLabel("Cliff Ratio:");
+		txtCliffRatio = new JTextField("" + Constants.CLIFF_RATIO, 3);
+		chkLandSlide = new JCheckBox("Land Slide", Constants.LAND_SLIDE);
+		
 		
 		btnResetBiomeSeed = new JButton("#");
 		btnResetBiomeSeed.addActionListener(this);
@@ -298,6 +314,9 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		pnlDirtOptionsMiddle.add(pnlDirtOptions2);
 		pnlDirtOptionsMiddle.add(pnlDirtOptions3);
 		
+		pnlDirtButton.add(chkLandSlide);
+		pnlDirtButton.add(lblCliffRatio);
+		pnlDirtButton.add(txtCliffRatio);
 		pnlDirtButton.add(btnDropDirt);
 		
 		pnlDirtControls.add(pnlDirtOptions, BorderLayout.NORTH);
@@ -482,11 +501,12 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		pnlMap = new MapPanel(width, height);
 		pnlMap.setBackground(Color.BLACK);
 		
-		this.add(pnlControls, BorderLayout.EAST);
-		this.add(pnlMap, BorderLayout.CENTER);
-		this.add(pnlSaveControls, BorderLayout.SOUTH);
+		getContentPane().add(pnlControls, BorderLayout.EAST);
+		getContentPane().add(pnlMap, BorderLayout.CENTER);
+		getContentPane().add(pnlSaveControls, BorderLayout.SOUTH);
 		
-		this.setBounds(0, 0, width + 400, height + 35);
+		this.setResizable(false);
+		this.setBounds(0, 0, 1024, 800);
 		this.setLocationRelativeTo(null);
 		this.setVisible(true);
 	}
@@ -509,6 +529,13 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 	public void newHeightMap(long seed, int mapSize, double resolution, int iterations, int minEdge, double borderWeight, int maxHeight, boolean moreLand) {
 		heightMap = new HeightMap(seed, mapSize, resolution, iterations, minEdge, borderWeight, maxHeight, moreLand);
 		heightMap.generateHeights();
+		
+		updateMapView(false, 0);
+	}
+	
+	public void newHeightMap(BufferedImage heightMapIn, int mapSize, int maxHeight) {
+		heightMap = new HeightMap(heightMapIn, mapSize, maxHeight);
+		heightMap.importHeightImage();
 		
 		updateMapView(false, 0);
 	}
@@ -570,12 +597,34 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		
 		String[] options = parts[1].split(",");		
 		switch (parts[0]) {
+			case "IMPORT":
+				if (options.length < 3) {
+					JOptionPane.showMessageDialog(this, "Not enough options for HEIGHTMAP", "Error Loading Actions", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				
+				try{
+					logger.log(Level.INFO, "1: " + options[0] + " 2: " + Integer.parseInt(options[1]) + " 3: " + options[2]);
+					
+					File heightImageFile = new File("./maps/" + txtName.getText() + "/" + options[0]);
+					cmbMapSize.setSelectedIndex(Integer.parseInt(options[1]));
+					txtMaxHeight.setText(options[2]);
+					
+					BufferedImage heightImage = new BufferedImage((int)cmbMapSize.getSelectedItem(), (int)cmbMapSize.getSelectedItem(), BufferedImage.TYPE_USHORT_GRAY);
+					heightImage = ImageIO.read(heightImageFile);
+					
+					newHeightMap(heightImage, (int) cmbMapSize.getSelectedItem(), Integer.parseInt(txtMaxHeight.getText()));
+					
+				} catch (Exception nfe) {
+					JOptionPane.showMessageDialog(this, "Error: " + nfe.getMessage().toLowerCase(), "Error Loading Actions", JOptionPane.ERROR_MESSAGE);
+				}
+				break;
 			case "HEIGHTMAP":
 				if (options.length < 8) {
 					JOptionPane.showMessageDialog(this, "Not enough options for HEIGHTMAP", "Error Loading Actions", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
-				
+
 				try {
 					txtSeed.setText(options[0]);
 					cmbMapSize.setSelectedIndex(Integer.parseInt(options[1]));
@@ -592,19 +641,20 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 				}
 				break;
 			case "ERODE":
-				if (options.length < 3) {
+				if (options.length < 4) {
 					JOptionPane.showMessageDialog(this, "Not enough options for ERODE", "Error Loading Actions", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
 				
 				txtErodeIterations.setText(options[0]);
 				txtErodeMinSlope.setText(options[1]);
-				txtErodeMaxSediment.setText(options[2]);
+				txtErodeMaxSlope.setText(options[2]);
+				txtErodeMaxSediment.setText(options[3]);
 					
 				btnErodeHeightMap.doClick();
 				break;
 			case "DROPDIRT":
-				if (options.length < 6) {
+				if (options.length < 8) {
 					JOptionPane.showMessageDialog(this, "Not enough options for DROPDIRT", "Error Loading Actions", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
@@ -615,6 +665,8 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 				txtDirtSlope.setText(options[3]);
 				txtDirtDiagSlope.setText(options[4]);
 				txtMaxDirtHeight.setText(options[5]);
+				txtCliffRatio.setText(options[6]);
+				chkLandSlide.setSelected(Boolean.parseBoolean(options[7]));
 					
 				btnDropDirt.doClick();
 				break;
@@ -673,8 +725,53 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		}
 	}
 	
+	/*
+	 * #####################################################################################################
+	 */
+	
 	@Override
 	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == btnLoadHeightMap) {
+			try {
+				File heightImageFile;
+				
+				JFileChooser fc = new JFileChooser();
+				fc.addChoosableFileFilter(new ImageFileView());
+				fc.setAcceptAllFileFilterUsed(false);
+				fc.setCurrentDirectory(new File("./"));
+				
+				int returnVal = fc.showDialog(this, "Load Heightmap");
+				
+				if (returnVal == JFileChooser.APPROVE_OPTION) {
+					heightImageFile = fc.getSelectedFile();
+					
+					BufferedImage heightImage = new BufferedImage((int)cmbMapSize.getSelectedItem(), (int)cmbMapSize.getSelectedItem(), BufferedImage.TYPE_USHORT_GRAY);
+					heightImage = ImageIO.read(heightImageFile);
+					
+					api = null;
+					genHistory = new ArrayList<String>();
+					
+					pnlMap.setMapSize((int) cmbMapSize.getSelectedItem());
+					
+					newHeightMap(heightImage, (int) cmbMapSize.getSelectedItem(), Integer.parseInt(txtMaxHeight.getText()));
+					
+					genHistory.add("IMPORT:" + fc.getSelectedFile().getName() + 
+							"," + cmbMapSize.getSelectedIndex() + "," + txtMaxHeight.getText());
+				}
+			} catch (NumberFormatException | IOException nfe) {
+				JOptionPane.showMessageDialog(this, "Error loading file " + nfe.getMessage().toLowerCase(), "Error Loading Heightmap", JOptionPane.ERROR_MESSAGE);
+			}
+		}
+		
+		if (e.getSource() == btnSaveHeightMap) {
+			if (heightMap == null) {
+				JOptionPane.showMessageDialog(this, "Heightmap does not exist - Generate one first", "Error Saving Heightmap", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
+			heightMap.exportHeightImage(txtName.getText());
+		}
+		
 		if (e.getSource() == btnGenHeightMap) {
 			try {
 				api = null;
@@ -703,11 +800,12 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 			
 			try {
 				heightMap.erode(Integer.parseInt(txtErodeIterations.getText()), Integer.parseInt(txtErodeMinSlope.getText()), 
-						Integer.parseInt(txtErodeMaxSediment.getText()));
+						Integer.parseInt(txtErodeMaxSlope.getText()), Integer.parseInt(txtErodeMaxSediment.getText()));
 				
 				updateMapView(false, 0);
 				
-				genHistory.add("ERODE:" + txtErodeIterations.getText() + "," + txtErodeMinSlope.getText() + "," + txtErodeMaxSediment.getText());
+				genHistory.add("ERODE:" + txtErodeIterations.getText() + "," + txtErodeMinSlope.getText() + "," + txtErodeMaxSlope.getText() + 
+						"," + txtErodeMaxSediment.getText());
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(this, "Error parsing number " + nfe.getMessage().toLowerCase(), "Error Eroding HeightMap", JOptionPane.ERROR_MESSAGE);
 			}
@@ -724,12 +822,14 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 				tileMap.setBiomeSeed(txtBiomeSeed.getText().hashCode());
 				tileMap.setWaterHeight(Integer.parseInt(txtWaterHeight.getText()));
 				tileMap.dropDirt(Integer.parseInt(txtDirtAmnt.getText()), Integer.parseInt(txtDirtSlope.getText()), 
-						Integer.parseInt(txtDirtDiagSlope.getText()), Integer.parseInt(txtMaxDirtHeight.getText()));
+						Integer.parseInt(txtDirtDiagSlope.getText()), Integer.parseInt(txtMaxDirtHeight.getText()), 
+						Double.parseDouble(txtCliffRatio.getText()), chkLandSlide.isSelected());
 				
 				updateMapView(true, 0);
 				
 				genHistory.add("DROPDIRT:" + txtBiomeSeed.getText() + "," + txtWaterHeight.getText() + "," + txtDirtAmnt.getText() + "," +
-						txtDirtSlope.getText() + "," + txtDirtDiagSlope.getText() + "," + txtMaxDirtHeight.getText());
+						txtDirtSlope.getText() + "," + txtDirtDiagSlope.getText() + "," + txtMaxDirtHeight.getText() + "," + txtCliffRatio.getText() +
+						"," + chkLandSlide.isSelected());
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(this, "Error parsing number " + nfe.getMessage().toLowerCase(), "Error Dropping Dirt", JOptionPane.ERROR_MESSAGE);
 			}
@@ -1019,6 +1119,38 @@ public class WGenerator extends JFrame implements ActionListener, FocusListener 
 		@Override
 		public String getDescription() {
 			return "Action Files (.txt)";
+		}
+	}
+	
+	class ImageFileView extends FileFilter {
+		
+		public boolean accept(File f) {
+		    if (f.isDirectory()) {
+		        return true;
+		    }
+
+		    String extension = getExtension(f);
+		    if (extension != null)
+		        if (extension.equals("png"))
+		                return true;
+
+		    return false;
+		}
+		
+		private String getExtension(File f) {
+	        String ext = null;
+	        String s = f.getName();
+	        int i = s.lastIndexOf('.');
+
+	        if (i > 0 &&  i < s.length() - 1) {
+	            ext = s.substring(i+1).toLowerCase();
+	        }
+	        return ext;
+	    }
+
+		@Override
+		public String getDescription() {
+			return "Heightmap Image (.png)";
 		}
 	}
 }

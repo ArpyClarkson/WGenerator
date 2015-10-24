@@ -49,12 +49,13 @@ public class TileMap {
 		this.lastBiomeChanges = new HashMap<Point, Tile>();
 	}
 	
-	public void dropDirt(int dirtCount, int maxSlope, int maxDiagSlope, int maxDirtHeight) {
+	public void dropDirt(int dirtCount, int maxSlope, int maxDiagSlope, int maxDirtHeight, double cliffRatio, boolean landSlide) {
 		double maxSlopeHeight = maxSlope * singleDirt;
 		double maxDiagSlopeHeight = maxDiagSlope * singleDirt;
 		double maxHeight = maxDirtHeight * singleDirt;
-		double taperHeight = maxHeight - ((dirtCount * 2) * singleDirt);
+		double taperHeight = maxHeight - ((dirtCount / 2) * singleDirt);
 		
+		/*
 		long startTime = System.currentTimeMillis();
 		for (int i = 0; i < dirtCount; i++) {
 			for (int x = 0; x < heightMap.getMapSize(); x++) {
@@ -72,6 +73,31 @@ public class TileMap {
 				}
 			}
 		}
+		*/
+		
+		long startTime = System.currentTimeMillis();
+		for (int x = 0; x < heightMap.getMapSize(); x++) {
+			for (int y = 0; y < heightMap.getMapSize(); y++) {
+				
+				for (int i = 0; i < findDropAmount(x, y, maxSlopeHeight, maxDiagSlopeHeight, dirtCount, cliffRatio); i++) {
+					if (heightMap.getHeight(x, y) > maxHeight)
+						continue;
+					
+					if (heightMap.getHeight(x, y) > taperHeight)
+						if ((maxHeight - heightMap.getHeight(x, y)) * heightMap.getMaxHeight() < i)
+							continue;
+					
+					if (landSlide) {
+						Point dropTile = findDropTile(x, y, maxSlopeHeight, maxDiagSlopeHeight);
+						addDirt((int) dropTile.getX(), (int) dropTile.getY(), 1);
+					} else {
+						Point dropTile = new Point(x,y);
+						addDirt((int) dropTile.getX(), (int) dropTile.getY(), 1);
+					}
+				}
+			}
+		}
+		
 		
 		logger.log(Level.INFO, "Dirt Dropping (" + dirtCount + ") completed in " + (System.currentTimeMillis() - startTime) + "ms.");
 	}
@@ -328,13 +354,13 @@ public class TileMap {
 	public void setWaterHeight(int newHeight) {
 		this.waterHeight = newHeight * singleDirt;
 	}
-
+	
 	private Point findDropTile(int x, int y, double maxSlope, double maxDiagSlope) {
 		ArrayList<Point> slopes = new ArrayList<Point>();
 		double currentHeight = getTileHeight(x, y);
 		
-		for (int i = x + 1; i >= x - 1; i--) {
-			for (int j = y + 1; j >= y - 1; j--) {
+		for (int i = x + 1; i > x - 1; i--) {
+			for (int j = y + 1; j > y - 1; j--) {
 				if (i < 0 || j < 0 || i >= heightMap.getMapSize() || j >= heightMap.getMapSize())
 					continue;
 				
@@ -348,12 +374,24 @@ public class TileMap {
 						slopes.add(new Point(i, j));
 			}
 		}
-		
+
 		if (slopes.size() > 0) {
 			int r = biomeRandom.nextInt(slopes.size());
 			return findDropTile((int) slopes.get(r).getX(), (int) slopes.get(r).getY(), maxSlope, maxDiagSlope);
 		} else {
 			return new Point(x, y);
 		}
+	}
+	
+	private int findDropAmount(int x, int y, double maxSlope, double maxDiagSlope, int dirtCount, double cliffRatio) {
+		
+		double slope  = (heightMap.maxDiff(x, y) * cliffRatio);
+		double slopeMax = (maxSlope + maxDiagSlope / 2);
+		
+		int dirtToDrop = (int)(dirtCount - ((dirtCount / slopeMax) * slope));
+		if (dirtToDrop < 0)
+			dirtToDrop = 0;
+
+		return dirtToDrop;
 	}
 }

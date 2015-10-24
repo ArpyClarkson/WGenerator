@@ -3,6 +3,15 @@ package net.buddat.wgenerator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.imageio.ImageIO;
+import javax.swing.JOptionPane;
+
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferUShort;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.IOException;
+
 import net.buddat.wgenerator.util.SimplexNoise;
 
 /**
@@ -37,6 +46,8 @@ public class HeightMap {
 	
 	private double singleDirt;
 	
+	private BufferedImage heightImage;
+	
 	public HeightMap(long seed, int mapSize, double resolution, int iterations, int minimumEdge, double borderWeight, int maxHeight, boolean moreLand) {
 		this.noiseSeed = seed;
 		this.mapSize = mapSize;
@@ -45,9 +56,29 @@ public class HeightMap {
 		this.minimumEdge = minimumEdge;
 		this.maxHeight = maxHeight;
 		this.moreLand = moreLand;
+		this.heightImage = null;
 		
 		this.heightArray = new double[mapSize][mapSize];
 		this.borderCutoff = (int) (mapSize / borderWeight);
+		this.borderNormalize = (float) (1.0f / borderCutoff);
+		
+		this.singleDirt = 1.0 / maxHeight;
+		
+		logger.setLevel(Level.INFO);
+	}
+	
+	public HeightMap(BufferedImage heightImage, int mapSize, int maxHeight) {
+		this.noiseSeed = 0;
+		this.mapSize = mapSize;
+		this.resolution = 0;
+		this.iterations = 0;
+		this.minimumEdge = 0;
+		this.maxHeight = maxHeight;
+		this.moreLand = false;
+		this.heightImage = heightImage;
+		
+		this.heightArray = new double[mapSize][mapSize];
+		this.borderCutoff = (int) (mapSize / 1);
 		this.borderNormalize = (float) (1.0f / borderCutoff);
 		
 		this.singleDirt = 1.0 / maxHeight;
@@ -78,6 +109,74 @@ public class HeightMap {
 		logger.log(Level.INFO, "HeightMap Generation (" + mapSize + ") completed in " + (System.currentTimeMillis() - startTime) + "ms.");
 		
 		normalizeHeights();
+	}
+	
+	/*
+	 *  #########################################################################################################################################
+	 */
+	
+	public void importHeightImage() {
+		logger.log(Level.INFO, "HeightMap seed set to: " + noiseSeed);
+		
+		if (heightImage.getHeight() != heightImage.getWidth())
+		{
+			JOptionPane.showMessageDialog(null, "The map must be square!", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		if (heightImage.getHeight() != mapSize || heightImage.getWidth() != mapSize) {
+			JOptionPane.showMessageDialog(null, "The image size does not match your map size! (1024, 2048, 4096, 8192, 16384)", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		long startTime = System.currentTimeMillis();
+		
+		try {
+			DataBufferUShort buffer = (DataBufferUShort) heightImage.getRaster().getDataBuffer();
+			
+			int[][] array = new int[mapSize][mapSize];
+			
+			for (int x = 0; x < mapSize; x++) {
+				for (int y = 0; y < mapSize; y++) {
+					
+					array[x][y] = buffer.getElem(x + y * mapSize);
+					
+					setHeight(x, y, getHeight(x, y) + (array[x][y] / 65536f), false);
+				}
+			}
+			
+			logger.log(Level.INFO, "HeightMap Generation (" + mapSize + ") completed in " + (System.currentTimeMillis() - startTime) + "ms.");
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(null, "The map must be 16-bit grayscale.", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+	}
+	
+	public void exportHeightImage(String txtName) {
+		File outfile = new File("./maps/" + txtName +"/heightmap.png");
+		BufferedImage bufferedImage = new BufferedImage(mapSize, mapSize, BufferedImage.TYPE_USHORT_GRAY);
+		WritableRaster wr = (WritableRaster) bufferedImage.getRaster();
+		
+		double[] array = new double[mapSize * mapSize];
+		for (int x = 0; x < mapSize; x++) {
+			for (int y = 0; y < mapSize; y++) {
+				array[x + y * mapSize] = (getHeight(x,y) * 65535);
+			}
+		}
+		
+		wr.setPixels(0, 0, mapSize, mapSize, array);
+		
+		bufferedImage.setData(wr);
+		try {
+			if (!outfile.exists())
+				outfile.mkdirs();
+			
+			ImageIO.write(bufferedImage, "png", outfile);
+		} catch (IOException e) {
+			JOptionPane.showMessageDialog(null, "Unable to create heightmap file.", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
 	}
 	
 	public void normalizeHeights() {
@@ -111,7 +210,27 @@ public class HeightMap {
 		logger.log(Level.INFO, "HeightMap Normalization (" + mapSize + ") completed in " + (System.currentTimeMillis() - startTime) + "ms.");
 	}
 	
-	public void erode(int iterations, int minSlope, int sedimentMax) {
+	public double maxDiff(int x, int y) {
+		double neighbours[] = new double[4];
+		double currentTile = heightArray[x][y];
+		
+		neighbours[0] = heightArray[clamp(x - 1, 0, mapSize - 1)][y];
+		neighbours[1] = heightArray[x][clamp(y - 1, 0, mapSize - 1)];
+		neighbours[2] = heightArray[clamp(x + 1, 0, mapSize - 1)][y];
+		neighbours[3] = heightArray[x][clamp(y + 1, 0, mapSize - 1)];
+		
+		double maxDiff = 0.0;
+		for (int k = 0; k < 3; k++) {
+			double diff = currentTile - neighbours[k];
+			if (diff > maxDiff) {
+				maxDiff = diff;
+			}
+		}
+		
+		return maxDiff;
+	}
+	
+	public void erode(int iterations, int minSlope, int maxSlope, int sedimentMax) {
 		long startTime = System.currentTimeMillis();
 		
 		for (int iter = 0; iter < iterations; iter++) {
@@ -136,7 +255,7 @@ public class HeightMap {
 					}
 					
 					double sediment = 0.0;
-					if (maxDiff > minSlope * singleDirt) {
+					if (maxDiff > minSlope * singleDirt && maxDiff < maxSlope * singleDirt) {
 						sediment = (sedimentMax * singleDirt) * maxDiff;
 						currentTile -= sediment;
 						neighbours[lowest] += sediment;
